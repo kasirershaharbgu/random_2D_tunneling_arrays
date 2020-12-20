@@ -1,0 +1,18 @@
+
+python3 dots_array.py -M 10 -N 10 --vmin 0.2 --vmax 0.025 --vstep 0.001 --vr 0 --vg-avg 0 --vg-std 0 --c-avg 1 --c-std 0.9 --cg-avg 10 --cg-std 0 --r-avg 10 --r-std 9 --rg-avg 500 --rg-std 0 --repeats 50 --n-avg 0 --n-std 0 --q-avg 0 --q-std 0 -T 0.001 --temperature-gradient 0 --distribution exp --gap 0 --custom-rh "" --custom-rv "" --custom-ch "" --custom-cv "" --file-name array_10_10_it_v_0.2_cg_10 -o bgu_it -i bgu_it/runningParameters_array_10_10_disorder_c_std_0.1_r_std_9_run_1.txt --full --current-map  --resume --symmetric-v      --calc-it  -i bgu_it/runningParameters_array_10_10_disorder_c_std_0.1_r_std_9_run_1.txt
+
+Loading parameters from file bgu_it/runningParameters_array_10_10_disorder_c_std_0.1_r_std_9_run_1.txt
+Loading array parameters
+Normal prototype array was created
+Starting parallel run
+Saving results
+Traceback (most recent call last):
+  File "dots_array.py", line 2424, in <module>
+    calcIT=options.calcIT)
+  File "dots_array.py", line 1866, in runFullSimulation
+    avgI = np.mean(np.array(Is), axis=0)
+  File "/usr/local/anaconda3/lib/python3.7/site-packages/numpy/core/fromnumeric.py", line 2920, in mean
+    out=out, **kwargs)
+  File "/usr/local/anaconda3/lib/python3.7/site-packages/numpy/core/_methods.py", line 75, in _mean
+    ret = umr_sum(arr, axis, dtype, out, keepdims)
+ValueError: operands could not be broadcast together with shapes (24,) (25,) 

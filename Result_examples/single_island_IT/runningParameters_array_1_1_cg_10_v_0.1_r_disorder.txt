@@ -1,0 +1,59 @@
+-------Running parameters--------
+T = 0.001
+temperature_gradient = 0.0
+gap = 0.0
+M = 1
+N = 1
+VR = 0.0
+Vmin = 0.1
+Vmax = 0.5
+vStep = 0.001
+vSym = True
+repeats = 20
+fileName = array_1_1_cg_10_v_0.1_r_disorder
+dist = exp
+fullOutput = True
+use_graph = False
+current_map = True
+plot_current_map = False
+plot_binary_current_map = False
+frame_norm = False
+dbg = False
+resume = False
+sc = False
+leaping = False
+constQ = False
+modifyR = False
+double_time = False
+double_loop = False
+calcIT = True
+output_folder = single_island_IT
+params_path = 
+VG_avg = 0.0
+VG_std = 0.0
+C_avg = 1.0
+C_std = 0.0
+CG_avg = 10.0
+CG_std = 0.0
+R_avg = 1.0
+R_std = 0.0
+custom_rh = "[[0.1111,0.9999]]"
+custom_rv = "[[]]"
+custom_ch = "[[0.5,0.5]]"
+custom_cv = "[[]]"
+RG_avg = 1000.0
+RG_std = 0.0
+n0_avg = 0.0
+n0_std = 0.0
+Q0_avg = 0.0
+Q0_std = 0.0
+----Array Parameters-----
+Rows: 1
+Columns: 1
+VG: [[0.]]
+CG: [[10.]]
+RG: [[1000.]]
+Ch: [[0.5 0.5]]
+Cv: [[0.]]
+Rh: [[0.1111 0.9999]]
+Rv: []
