@@ -1,18 +1,24 @@
 
 # random_2D_tunneling_arrays 
-This repository includes python code for running Gillespie (Kinetic Monte-Carlo) simulations for 2D random arrays. 
+This repository includes python code for running Gillespie (Kinetic Monte-Carlo) simulations for 2D random arrays, random_2d_array_simulation.py. 
 
                 
 This code is free to use, you are more than welcom to use this code for any reason (see LICENSE.md).
 Also included:  
-                - result example
-                - Python script for fast results processing
-                - Examples for movie clips of the current and occupations in the system
-                - Theoretical background - my M.Sc. thesis and seminar presentation, explaining the required theoretical background and presenting results.
+
+                - Result_examples: examples for simulation results
+                
+                - results_processor.py: Python script for fast results processing
+                
+                - current_movie_clips: Examples for movie clips of the current and occupations in the system
+                
+                - Theoretical background and results: - My M.Sc. thesis and seminar presentation, explaining the required theoretical background and presenting results.
+          
+                - single_island_solution.nb: Mathematica notebook with an analytical solution for a single island. 
 
 Running instructions
 --------------------
-Usage: random_2d_array_simulation.py [options]
+Usage: python3 random_2d_array_simulation.py [options]
 
 Options:
 
