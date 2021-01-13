@@ -46,7 +46,7 @@ def add_text_upper_left_corner(ax, text, shift=0):
     x_min,x_max,y_min,y_max = ax.axis()
     x = x_min + (x_max-x_min)/100
     y = y_max - (y_max-y_min)/9 + shift
-    ax.text(x, y, text, fontsize=30)
+    ax.text(x, y, text, fontsize=60)
     return ax
 
 def add_subplot_axes(fig, ax,rect):
@@ -173,8 +173,8 @@ class SingleResultsProcessor:
             if i > 0 and len(bins) > 1 and len(bins[0]) > 2 and len(bins[1]) > 2:
                 avg1 = np.average(bins[0])
                 avg2 = np.average(bins[1])
-                if np.abs(avg1 - self.I[i-1]) < np.abs(avg2 - self.I[i-1]):
-                # if len(bins[0]) > len(bins[1]):
+                # if np.abs(avg1 - self.I[i-1]) < np.abs(avg2 - self.I[i-1]):
+                if len(bins[0]) > len(bins[1]):
                     self.I[i] = avg1
                     self.IErr[i] = np.std(bins[0])
                     self.alternativeI.append(avg2)
@@ -1051,7 +1051,7 @@ class SingleResultsProcessor:
         ax.imshow(np.ma.masked_array(dots, dots_mask), vmin=np.min(dots),
                   vmax=np.max(dots), cmap='Blues', aspect='equal')
         divider = make_axes_locatable(ax)
-        pad = 0.15 if electrodes else 0.05
+        pad = 0.55 if electrodes else 0.05
         cax = divider.append_axes("right", size="5%", pad=pad)
         if parameter == "RC":
             im2 = ax.imshow(np.ma.masked_array(connection2, connection2_mask), vmin=np.min(connection2),
@@ -1233,22 +1233,17 @@ class SingleResultsProcessor:
                         interp1d(vertR - vertRErr, T[vertI > 0], assume_sorted=False, fill_value=(np.max(T), 0), bounds_error=False))
         return results
 
-    def plot_RT(self, ax=None, err=False, errorevery=10, fit=True, shift=1, color='blue', vert_color="green",
-                label="", vert_label=""):
+    def plot_RT(self, ax=None, err=False, errorevery=1, fit=True, shift=1, color='blue', vert_color="green",
+                label="", vert_label="", text_pos=None):
         if self.T is None:
             print("No temperature data where loaded")
             exit(1)
         if ax is None:
             fig, ax = plt.subplots(figsize=FIGSIZE)
-        def plot_RT_helper(V, T, I, IErr, label="", fit_label="", color=""):
+        def plot_RT_helper(V, T, I, IErr, label="", fit_label="", color="", text_pos=None):
             I[I<0] = 0
             R = V / I[I > EPS]
             RErr = (IErr[I > EPS] * R) / I[I > EPS]
-            if err:
-                ax.errorbar(T[I > EPS], R * shift, color=color, marker='.',linestyle="",
-                             yerr=RErr, errorevery=errorevery, label=label)
-            else:
-                ax.plot(T[I>EPS], R* shift, color=color, marker='.',linestyle="",label=label)
             if fit:
                 def arrhenius(T, a, b):
                     return a*np.exp(-b/T)
@@ -1263,10 +1258,18 @@ class SingleResultsProcessor:
                     Rinf_err = (Rinf * G_err) / G
                     Rinf, Rinf_err = significant_figures(Rinf, Rinf_err)
                     T0,T0_err = significant_figures(T0, T0_err)
-                    ax.text(np.min(T) + 0.04, np.min(R)*shift*10,
-                            "$R_{\\infty}/\\left(R_1+R_2\\right) = %s \\pm %s$, $T_0\\frac{C_1+C_2}{e^2} = %s \\pm %s$" % (
+                    if text_pos is None:
+                        text_pos = (np.min(1/T[I>EPS]) + 0.04, np.min(R)*shift)
+                    ax.text(text_pos[0], text_pos[1],
+                            "$R_{\\infty}= %s \\pm %s$, $T_0 = %s \\pm %s$" % (
                                 str(Rinf), str(Rinf_err), str(T0), str(T0_err)), color=color)
                     fit_result = arrhenius(T, *fit_param)
+                    ax.plot(1 / T[I > EPS], (1 / fit_result[I > EPS]) * shift, color=color, label=fit_label)
+                    if err:
+                        ax.errorbar(1 / T[I > EPS], R * shift, color=color, marker='.', linestyle="",
+                                    yerr=RErr, errorevery=errorevery, label=label)
+                    else:
+                        ax.plot(1 / T[I > EPS], R * shift, color=color, marker='.', linestyle="", label=label)
                 else:
                     fit_param, fit_cov = curve_fit(shifted_arrhenius, T, I/V, p0=((I[-1]-I[0])/V, 2,I[3]/V), bounds=(0,np.inf),
                                                    sigma=IErr/V)
@@ -1279,29 +1282,42 @@ class SingleResultsProcessor:
                     Rinf, Rinf_err = significant_figures(Rinf, Rinf_err)
                     T0, T0_err = significant_figures(T0, T0_err)
                     R0, R0_err = significant_figures(R0, R0_err)
-                    ax.text(np.min(T) + 0.013, np.min(R)*shift*4,
-                            "$R_{0}/\\left(R_1+R_2\\right) = %s \\pm %s$, $R_{\\infty}/\\left(R_1+R_2\\right)= %s \\pm %s$, $T_0\\frac{C_1+C_2}{e^2}  = %s \\pm %s$" % (
+                    if text_pos is None:
+                        text_pos = (np.min(1/T[I>EPS]) , (1/R[-1]-G0)*shift)
+                    ax.text(text_pos[0], text_pos[1],
+                            "$R_{0} = %s \\pm %s$, $R= %s \\pm %s$, $T_0 = %s \\pm %s$" % (
                           str(R0), str(R0_err), str(Rinf), str(Rinf_err), str(T0), str(T0_err)), color=color)
                     fit_result = shifted_arrhenius(T, *fit_param)
-                ax.plot(T, (1/fit_result) * shift, color=color,label=fit_label)
-            # ax.set_ylim(1, np.max(R *shift))
-            # ax.set_xlim(0, max(ax.get_xlim()[1], np.max(T)))
+                    ax.plot(1/T[I>EPS], (1/(fit_result[I>EPS]-G0)) * shift, color=color,label=fit_label)
+                    if err:
+                        ax.errorbar(1 / T[I > EPS], (1/(1/R -G0))* shift, color=color, marker='.', linestyle="",
+                                    yerr=RErr, errorevery=errorevery, label=label)
+                    else:
+                        ax.plot(1 / T[I > EPS], (R - R0) * shift, color=color, marker='.', linestyle="", label=label)
+
+            else:
+                if err:
+                    ax.errorbar(1 / T[I > EPS], R * shift, color=color, marker='.', linestyle="",
+                                yerr=RErr, errorevery=errorevery, label=label)
+                else:
+                    ax.plot(1 / T[I > EPS], R * shift, color=color, marker='.', linestyle="", label=label)
             return True
         V = self.get_running_param("Vmin") * self.calc_param_average("C")
         T = self.T
         I = self.I
         IErr = self.IErr
         IErr[IErr < EPS] = EPS
-        plot_RT_helper(V, T, I, IErr,label=label, fit_label=label + " fit", color=color)
+        plot_RT_helper(V, T, I, IErr,label=label, fit_label=label + " fit", color=color, text_pos=text_pos)
         if self.vert:
             V = np.abs(self.get_running_param("VU") - self.get_running_param("VL")) * self.calc_param_average("C")
             I = self.vertI
             IErr = self.vertIErr
-            plot_RT_helper(V, T, I, IErr, label=vert_label, fit_label=vert_label + " fit", color=vert_color)
+            plot_RT_helper(V, T, I, IErr, label=vert_label, fit_label=vert_label + " fit", color=vert_color,
+                           text_pos=text_pos)
         if label:
             ax.legends()
         ax.set_ylabel("$\\frac{R_{arr}}{\\left<R\\right>}$")
-        ax.set_xlabel("$k_BT\\frac{\\left<C\\right>}{e^2}$")
+        ax.set_xlabel("$\\frac{1}{k_BT}\\frac{e^2}{\\left<C\\right>}$")
         ax.set_yscale("log", nonposy='clip')
         return V
 
@@ -2005,7 +2021,7 @@ class MultiResultAnalyzer:
             fit_Ns = np.linspace(np.min(Ns), np.max(Ns), 100)
             ax.plot(fit_Ns, avg_func(fit_Ns, *params_avg), color=avg_color, linestyle=fit_linestyle)
             ax2.plot(fit_Ns, std_func(fit_Ns, *params_std), color=std_color, linestyle=fit_linestyle)
-            ax.plot(fit_Ns, 0.5/fit_Ns, color="orange", linestyle='dotted')
+            ax.plot(fit_Ns, 0.5/fit_Ns, color="orange", linestyle='dotted', linewidth=5)
         return fig, ax, ax2
 
 
@@ -2147,7 +2163,7 @@ def plot_paths(paths, ax, colors, vert=False):
         elif vert:
             arrow_y += 4
         ax.arrow(arrow_x, arrow_y, right, up,
-                 head_width=1, head_length=0.5, color=colors[path_idx], width=0.1, clip_on=False)
+                 head_width=3, head_length=0.5, color=colors[path_idx], width=0.5, clip_on=False)
         for idx in range(len(path)-1):
             i1 = path[idx][0]
             j1 = path[idx][1]
@@ -2155,7 +2171,7 @@ def plot_paths(paths, ax, colors, vert=False):
             j2 = path[idx+1][1]
             arrow_y = 6 * (i1 + shift) + 4 if vert else 6 * (i1 + shift)
             ax.arrow(4+6*(j1+ shift), arrow_y, 6*(j2-j1), 6*(i2-i1),
-                     head_width=1, head_length=0.5, color=colors[path_idx], width=0.1, clip_on=False)
+                     head_width=3, head_length=0.5, color=colors[path_idx], width=0.5, clip_on=False)
         shift += 0.02
     return ax
 
@@ -2436,7 +2452,8 @@ if __name__ == "__main__":
         #               [0.55, 0.1, 0.45, 0.45]]
         subplotloc = [[0.55, 0.1, 0.45, 0.45], [0.55, 0.1, 0.45, 0.45], [0.55, 0.1, 0.45, 0.45],
                                      [0.55, 0.1, 0.45, 0.45]]
-        c_shifts = [-5e5, -1e5, -3e3, -5e3]
+        c_shifts = [-5e5, -8.9e4, -4.1e4, -2.8e4]
+        c_xlim = [200, 400, 100, 200]
         # electrodes = [Rectangle((-3,3.5),3,26, fill=True, color="m", clip_on=False),
         #               Rectangle((93,3.5),3,26, fill=True, color="m", clip_on=False),
         #               Rectangle((45.5,-7),2,6, fill=True, color="m", clip_on=False),
@@ -2475,6 +2492,7 @@ if __name__ == "__main__":
                     #                                                    minor_thresholds=(1.5, 1))
                     # axes[1, 1].yaxis.set_minor_locator(locmin)
                     # axes[1, 1].yaxis.set_minor_formatter(formatmin)
+                    axes[1,0].set_xlim(0, c_xlim[i])
                     add_text_upper_left_corner(axes[0, 0], "a")
                     add_text_upper_left_corner(axes[0, 1], "b")
                     add_text_upper_left_corner(axes[1, 0], "c", shift=c_shifts[i])
@@ -2495,7 +2513,7 @@ if __name__ == "__main__":
                     v = s.plot_RT(err=True)
                     plt.show()
     elif action == "plot_RT_single_island":
-        directory = "/home/kasirershahar/University/Research/simulation_results/single_island/single_island_IT"
+        directory = "/home/kasirershahar/University/Research/simulation_results/it/single_island_IT"
         files = [["array_1_1_cg_1_v_0.1","array_1_1_cg_1_v_0.1_r_disorder","array_1_1_cg_10_v_0.1",
                   "array_1_1_cg_10_v_0.1_r_disorder"],
                  ["array_1_1_cg_1_v_0.5", "array_1_1_cg_1_v_0.5_r_disorder", "array_1_1_cg_10_v_0.5",
@@ -2504,7 +2522,7 @@ if __name__ == "__main__":
                   "array_1_1_cg_10_v_1_r_disorder"]]
         fig, ax = plt.subplots(3,1, figsize=FIGSIZE)
         shift = 1
-        shift_factor = [700,700,100]
+        shift_factor = [800,1500,5000]
         labels =["$\\frac{C_G}{C_1+C_2} = 1$ $\\frac{R_2}{R_1}=1$", "$\\frac{C_G}{C_1+C_2} = 1$ $\\frac{R_2}{R_1}=9$", "$\\frac{C_G}{C_1+C_2} = 10$ $\\frac{R_2}{R_1}=1$",
                  "$\\frac{C_G}{C_1+C_2} = 10$ $\\frac{R_2}{R_1}=9$"]
         colors = matplotlib.cm.gist_rainbow(np.linspace(0, 1, 4))
@@ -2513,28 +2531,31 @@ if __name__ == "__main__":
                 s = SingleResultsProcessor(directory, name, fullOutput=options.full, vertCurrent=False, graph=False,
                                            reAnalyze=options.re_analyze, IT=True, single=True)
                 if filter(s):
-                    v = s.plot_RT(ax[index], shift=shift, err=True, color=colors[i])
+                    v = s.plot_RT(ax[index], shift=shift, err=True, color=colors[i], text_pos=(2, 0.01*shift))
                     shift *= shift_factor[index]
-                ax[index].set_title("$V\\frac{C_1+C_2}{e} = %1.1f$" %v, position=(0.5, 0.75))
-                ax[index].set_xlabel("$T\\frac{C_1+C_2}{e^2}$")
-                ax[index].set_ylabel("$\\frac{R_{tot}}{R_1+R_2}$")
+                ax[index].set_title("$V = %1.1f$" %v, position=(0.1, 0.8))
+                ax[index].set_xlabel("$\\frac{1}{k_BT}\\frac{e^2}{C_1+C_2}$")
+                if index == 2:
+                    ax[index].set_ylabel("$\\frac{\\left(R_{tot}^{-1}-R_0^{-1}\\right)^{-1}}{R_1+R_2}$")
+                else:
+                    ax[index].set_ylabel("$\\frac{R_{tot}}{R_1+R_2}$")
+
             index += 1
             shift=1
         ax[0].set_xlabel('')
-        ax[0].set_xticks([])
-        ax[0].set_xlim(0,0.3)
-        ax[0].set_ylim(1,1e15)
+        ax[0].set_xlim(2,25)
+        ax[0].set_ylim(0.01,1e12)
         ax[1].set_xlabel('')
-        ax[1].set_xticks([])
-        ax[1].set_xlim(-0.003, 0.3)
-        ax[1].set_ylim(1,1e15)
-        ax[2].set_ylim(1,1e10)
-        ax[2].set_xlim(0, 0.3)
-        plt.subplots_adjust(wspace=0, hspace=0)
+        ax[1].set_xlim(2, 80)
+        ax[1].set_ylim(0.01,1e14)
+        ax[2].set_ylim(0.01,1e15)
+        ax[2].set_xlim(2, 20)
+        plt.subplots_adjust(wspace=0, hspace=0.3)
         ax[0].legend(labels, loc='upper center', bbox_to_anchor=(0.5, 1.5), ncol=4, fancybox=True, shadow=True)
-        ax[0].text(0.001, 5*1e13, "a", fontsize=30)
-        ax[1].text(-0.0015, 1e13, "b", fontsize=30)
-        ax[2].text(0.001, 1e9, "c", fontsize=30)
+        add_text_upper_left_corner(ax[0], "a", shift=-8.7e11)
+        add_text_upper_left_corner(ax[1], "b", shift=-8.85e13)
+        add_text_upper_left_corner(ax[2], "c", shift=-8.8e14)
+
         if options.output_folder:
             plt.savefig(os.path.join(options.output_folder,'single_island_RT.png'), bbox_inches='tight', pad_inches=0.2)
             plt.close(fig)
@@ -2547,7 +2568,8 @@ if __name__ == "__main__":
                  ["array_10_10_it_v_0.8_cg_%d"%i for i in [1, 5, 10]]]
         fig, ax = plt.subplots(3, 1, figsize=FIGSIZE)
         shift = 1
-        shift_factor = [1000, 50, 50]
+        shift_factor = [1000, 1000, 1000]
+        ymin = [0.01, 0.02, 0.05]
         labels = ["$\\frac{C_G}{\\left<C\\right>} = 0.5$", "$\\frac{C_G}{\\left<C\\right>} = 2.5$",
                   "$\\frac{C_G}{\\left<C\\right>} = 5$"]
         colors = matplotlib.cm.gist_rainbow(np.linspace(0, 1, 3))
@@ -2556,30 +2578,29 @@ if __name__ == "__main__":
                 s = SingleResultsProcessor(directory, name, fullOutput=options.full, vertCurrent=False, graph=False,
                                            reAnalyze=options.re_analyze, IT=True, single=True)
                 if filter(s):
-                    v = s.plot_RT(ax[index], shift=shift, err=True, color=colors[i])
+                    v = s.plot_RT(ax[index], shift=shift, err=True, color=colors[i], text_pos=(10,ymin[index]*shift))
                     shift *= shift_factor[index]
-                ax[index].set_title("$V\\frac{\\left<C\\right>}{e} = %1.1f$" % v, position=(0.7, 0.75))
-                ax[index].set_xlabel("$T\\frac{\\left<C\\right>}{e^2}$")
-                ax[index].set_ylabel("$\\frac{R_{tot}}{\\left<R\\right>}$")
+                ax[index].set_title("$V = %1.1f$" % v, position=(0.1, 0.75))
+                ax[index].set_xlabel("$\\frac{1}{k_BT}\\frac{e^2}{\\left<C\\right>}$")
+                if index ==0:
+                    ax[index].set_ylabel("$\\frac{R_{tot}}{\\left<R\\right>}$")
+                else:
+                    ax[index].set_ylabel("$\\frac{\\left(R_{tot}^{-1}-R_0^{-1}\\right)^{-1}}{\\left<R\\right>}$")
             index += 1
             shift = 1
         ax[0].set_xlabel('')
-        ax[0].set_xticks([])
-        ax[0].set_xlim(0, 0.1)
-        ax[0].set_ylim(1, 1e13)
+        ax[0].set_xlim(10, 25)
+        ax[0].set_ylim(0.01, 1e11)
         ax[1].set_xlabel('')
-        ax[1].set_xticks([])
-        ax[1].set_xlim(0, 0.1)
-        ax[1].set_ylim(1, 5e7)
-        ax[2].set_xlabel('')
-        ax[2].set_xticks([])
-        ax[2].set_ylim(1, 1e7)
-        ax[2].set_xlim(0, 0.1)
-        plt.subplots_adjust(hspace=0)
-        ax[0].legend(labels, loc='upper center', bbox_to_anchor=(0.5, 1.4), ncol=3, fancybox=True, shadow=True)
-        add_text_upper_left_corner(ax[0], "a", shift=-6e12)
-        add_text_upper_left_corner(ax[1], "b", shift=-3e7)
-        add_text_upper_left_corner(ax[2], "c", shift=-5e6)
+        ax[1].set_xlim(10, 60)
+        ax[1].set_ylim(0.02, 5e10)
+        ax[2].set_xlim(10, 75)
+        ax[2].set_ylim(0.05, 1e9)
+        plt.subplots_adjust(hspace=0.3)
+        ax[0].legend(labels, loc='upper center', bbox_to_anchor=(0.5, 1.5), ncol=3, fancybox=True, shadow=True)
+        add_text_upper_left_corner(ax[0], "a", shift=-8.6e10)
+        add_text_upper_left_corner(ax[1], "b", shift=-4.41e10)
+        add_text_upper_left_corner(ax[2], "c", shift=-8.2e8)
 
         if options.output_folder:
             plt.savefig(os.path.join(options.output_folder, 'array_RT.png'), bbox_inches='tight',
@@ -2695,7 +2716,25 @@ if __name__ == "__main__":
         if options.plot3d:
             plt.zlabel(options.zlabel)
         plt.show()
-
+    elif action == "plot_array_params":
+        for directory,names in zip(directories, file_names):
+            for name in names:
+                try:
+                    s = SingleResultsProcessor(directory, name, fullOutput=options.full, vertCurrent=False, graph=False,
+                                               reAnalyze=options.re_analyze)
+                    if filter(s):
+                        print("Plotting file: " + name + " from directory " + directory)
+                        fig, ax = plt.subplots(figsize=FIGSIZE)
+                        s.plot_array_params("RC", ax=ax, fig=fig)
+                        fig.canvas.set_window_title(name.replace("_", " "))
+                        if options.output_folder:
+                            fig.savefig(os.path.join(options.output_folder, name + '_params.png'), bbox_inches='tight')
+                            plt.close(fig)
+                        else:
+                            plt.show()
+                except MissingFilesException:
+                    print("Missig file for plotting " + name)
+                    continue
     ####### Manual actions ########
     elif action == "compareIV": # compares methods
         directory_graph = "/home/kasirershahar/University/Research/Numerics/jumps_stats"
@@ -3701,7 +3740,7 @@ if __name__ == "__main__":
                                   ax=ax5, fmt='bv')
         xs = np.linspace(0,0.1,1000)
         ys = (5/3)*np.ones(xs.shape)
-        ax5.plot(xs,ys,color="orange",linestyle='dotted')
+        ax5.plot(xs,ys,color="orange",linestyle='dotted',linewidth=5)
         ax5.set_xlabel("$k_B T \\frac{\\left<C\\right>}{e^2}$")
         ax5.set_ylabel("Power-law exponent")
         add_text_upper_left_corner(ax5, "c")
@@ -3730,6 +3769,143 @@ if __name__ == "__main__":
         plt.tight_layout()
         if options.output_folder:
             fig.savefig(os.path.join(options.output_folder, 'power_law_vs_temperature.png'))
+            plt.close(fig)
+        else:
+            plt.show()
+
+    elif action == "IV_by_gap":
+        fig, ax1 = plt.subplots(figsize=(15, 16))
+        directory = directories[0]
+        names = ["sc_array_5_5_T_0.001_cg_10_run_2_gap_0.01",
+                  "sc_array_5_5_T_0.001_cg_10_run_2_gap_0.1"]
+        gaps=[0.01, 0.1]
+        gap_vals = ["2", "0.2"]
+        shift = 0
+        for index,name in enumerate(names):
+            p = SingleResultsProcessor(directory, name, reAnalyze=options.re_analyze, graph=False, fullOutput=False)
+            p.plot_IV(ax1, fig, Vnorm=1, Inorm=1, shift=shift, err=True, errorevery=1, alternative=False,
+                      Ilabel="$I\\frac{\\left<R\\right>\\left<C\\right>}{e}$", Vlabel="$V\\frac{\\left<C\\right>}{e}$")
+            gap_vals.append(gaps[index]*p.calc_param_average("C"))
+            shift += 0.3
+        ax1.text(1.01, 0.05, "$\\Delta = %sE_c$"%gap_vals[0],
+                 fontsize=30)
+        ax1.text(1.01,0.31, "$\\Delta = %sE_c$"%gap_vals[1],
+                 fontsize=30)
+        ax1.legend(["Increasing voltage", "Decreasing voltage"], fontsize=30, loc=[0.1, 0.8])
+        ax1.set_xlim(1,2.48)
+        if options.output_folder:
+            fig.savefig(os.path.join(options.output_folder, 'array_IV_examples_different_sc_gap.png'),
+                        bbox_inches='tight')
+            plt.close(fig)
+        else:
+            plt.show()
+
+    elif action == "IV_superconducting":
+        fig, axes = plt.subplots(1,2,figsize=(30, 16))
+        ax1,ax2 = axes
+        directory = directories[0]
+        names1 = ["sc_array_10_10_T_0.001_cg_1",
+                  "sc_array_10_10_T_0.001_cg_10"]
+        names2 = ["sc_array_10_10_T_0.005_cg_1",
+                  "sc_array_10_10_T_0.005_cg_10"]
+        cg_vals = []
+        shift = 0
+        for index,name in enumerate(names1):
+            p = SingleResultsProcessor(directory, name, reAnalyze=options.re_analyze, graph=False, fullOutput=False)
+            p.plot_IV(ax1, fig, Vnorm=1, Inorm=1, shift=shift, err=True, errorevery=1, alternative=False,
+                      Ilabel="$I\\frac{\\left<R\\right>\\left<C\\right>}{e}$", Vlabel="$V\\frac{\\left<C\\right>}{e}$")
+            cg_vals.append(p.calc_param_average("CG")/p.calc_param_average("C"))
+            shift += 0.3
+        ax1.text(1.01, 0.05, "$C_G = " + str(np.round(10 * cg_vals[0]) / 10) + "\\left<C\\right>$",
+                 fontsize=30)
+        ax1.text(1.01,0.31, "$C_G = " + str(np.round(10 * cg_vals[1]) / 10) + "\\left<C\\right>$",
+                 fontsize=30)
+        ax1.legend(["Increasing voltage", "Decreasing voltage"], fontsize=30, loc=[0.1, 0.8])
+        for index,name in enumerate(names2):
+            p = SingleResultsProcessor(directory, name, reAnalyze=options.re_analyze, graph=False, fullOutput=False)
+            p.plot_IV(ax2, fig, Vnorm=1, Inorm=1, shift=shift, err=True, errorevery=1, alternative=False,
+                      Ilabel="$I\\frac{\\left<R\\right>\\left<C\\right>}{e}$", Vlabel="$V\\frac{\\left<C\\right>}{e}$")
+            cg_vals.append(p.calc_param_average("CG")/p.calc_param_average("C"))
+            shift += 0.3
+        ax2.text(1.01, 0.05, "$C_G = " + str(np.round(10 * cg_vals[0]) / 10) + "\\left<C\\right>$",
+                 fontsize=30)
+        ax2.text(1.01,0.31, "$C_G = " + str(np.round(10 * cg_vals[1]) / 10) + "\\left<C\\right>$",
+                 fontsize=30)
+        if options.output_folder:
+            fig.savefig(os.path.join(options.output_folder, 'array_IV_examples_different_sc_gap.png'),
+                        bbox_inches='tight')
+            plt.close(fig)
+        else:
+            plt.show()
+
+    elif action =='plot_sc_rates':
+        fig, axes = plt.subplots(1,2,figsize=FIGSIZE)
+        ax, ax1 =axes
+        cp_directories = ["cooper_pairs_rate/tunneling_rate_0.001_0.0012498865053282438",
+                          "cooper_pairs_rate/tunneling_rate_0.001_0.0125"]
+        qp_directories = ["quasi_particles_rate/tunneling_rate_0.001_0.01",
+                          "quasi_particles_rate/tunneling_rate_0.001_0.1"]
+        colors = ["red", "blue"]
+        gaps = ["0.2", "2"]
+        ax2 = add_subplot_axes(fig, ax, [0.1, 0.47, 0.25, 0.5])
+        def electrons_tunneling_rates(deltaE, temperature):
+            return deltaE / (1 - np.exp(-deltaE/temperature))
+
+        def load_rates(direcory):
+            deltaEmin = np.load(os.path.join(direcory, "deltaEmin.npy"))
+            deltaEmax = np.load(os.path.join(direcory, "deltaEmax.npy"))
+            deltaEstep = np.load(os.path.join(direcory, "deltaEstep.npy"))
+            deltaEvals = np.arange(deltaEmin, deltaEmax, deltaEstep)
+            vals = np.load(os.path.join(direcory, "vals.npy"))
+            return 20*deltaEvals, 0.5*vals
+        for cp_dir, qp_dir, color, gap in zip(cp_directories, qp_directories, colors, gaps):
+            cp_deltaE, cp_rates = load_rates(cp_dir)
+            qp_deltaE, qp_rates = load_rates(qp_dir)
+            cp_label = "$\\Gamma_{cp}$, $\\Delta= %s E_c$" % gap
+            qp_label = "$\\Gamma_{qp}$, $\\Delta= %s E_c$" % gap
+            electrons_label = "$\\Gamma_{e}$"
+            ax.plot(cp_deltaE, (1/4)*cp_rates, linestyle='-', color=color, label=cp_label, linewidth=5)
+            ax.plot(qp_deltaE, qp_rates, linestyle='--', color=color, label=qp_label, linewidth=5)
+
+
+            ax2.plot(cp_deltaE, (1/4)*cp_rates, linestyle='-', color=color, linewidth=5)
+            ax2.plot(qp_deltaE, qp_rates, linestyle='--', color=color, linewidth=5)
+
+        ax.plot(qp_deltaE, (0.025)*electrons_tunneling_rates(qp_deltaE, 0.016),
+                linestyle='dotted', color='m', label=electrons_label, linewidth=5)
+        ax2.plot(qp_deltaE, (0.025) * electrons_tunneling_rates(qp_deltaE, 0.016),
+                linestyle='dotted', color='m', label=electrons_label, linewidth=5)
+        ax.set_ylim(-0.01, 0.12)
+        ax.set_xlim(-0.005, 6)
+        ax2.set_ylim(-0.00005,0.004)
+        ax2.set_xlim(0, 5.2)
+        rect = Rectangle((0, 0), 5.2, 0.006, linewidth=1, edgecolor='black', facecolor='none')
+        ax.add_patch(rect)
+        ax.set_ylabel("Rates $\\left[1/\\left<R\\right>\\left<C\\right>\\right]$")
+        ax.set_xlabel("$\\left(-\\Delta E\\right)/E_c$")
+        ax.legend(fontsize=30, loc=[0.35, 0.65])
+        directory = directories[0]
+        names = ["sc_array_5_5_T_0.001_cg_10_run_2_gap_0.01",
+                 "sc_array_5_5_T_0.001_cg_10_run_2_gap_0.1"]
+        gaps = [0.01, 0.1]
+        gap_vals = ["0.2", "2"]
+        shift = 0
+        for index, name in enumerate(names):
+            p = SingleResultsProcessor(directory, name, reAnalyze=options.re_analyze, graph=False, fullOutput=False)
+            p.plot_IV(ax1, fig, Vnorm=1, Inorm=1, shift=shift, err=True, errorevery=1, alternative=False,
+                      Ilabel="$I\\frac{\\left<R\\right>\\left<C\\right>}{e}$", Vlabel="$V\\frac{\\left<C\\right>}{e}$")
+            gap_vals.append(gaps[index] * p.calc_param_average("C"))
+            shift += 0.3
+        ax1.text(1.01, 0.05,
+                 "$\\Delta = %s E_c$"%gap_vals[0],
+                 fontsize=30)
+        ax1.text(1.01, 0.31, "$\\Delta = %s E_c$"%gap_vals[1],
+                 fontsize=30)
+        ax1.legend(["Increasing voltage", "Decreasing voltage"], fontsize=30, loc=[0.1, 0.8])
+        ax1.set_xlim(1, 2.48)
+
+        if options.output_folder:
+            fig.savefig(os.path.join(options.output_folder, 'sc_results.png'), bbox_inches='tight')
             plt.close(fig)
         else:
             plt.show()
